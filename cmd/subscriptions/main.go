@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/AntonMilienkov/REST-service/internal/config"
+	"github.com/AntonMilienkov/REST-service/internal/repository"
 )
 
 func main() {
@@ -12,5 +14,15 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	log.Printf("config loaded: server_port=%s db_host=%s db_name=%s", cfg.ServerPort, cfg.DBHost, cfg.DBName)
+	if err := repository.Migrate(cfg.DSN(), "migrations"); err != nil {
+		log.Fatalf("run migrations: %v", err)
+	}
+
+	pool, err := repository.NewPool(context.Background(), cfg.DSN())
+	if err != nil {
+		log.Fatalf("connect to db: %v", err)
+	}
+	defer pool.Close()
+
+	log.Printf("connected to db, server_port=%s", cfg.ServerPort)
 }
