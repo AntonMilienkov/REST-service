@@ -101,11 +101,11 @@ func (r *PostgresSubscriptionRepository) Update(ctx context.Context, sub *model.
 		UPDATE subscriptions
 		SET service_name = $1, price = $2, user_id = $3, start_date = $4, end_date = $5, updated_at = now()
 		WHERE id = $6
-		RETURNING updated_at`
+		RETURNING created_at, updated_at`
 
 	err := r.pool.QueryRow(ctx, query,
 		sub.ServiceName, sub.Price, sub.UserID, sub.StartDate.Time, monthYearToTime(sub.EndDate), sub.ID,
-	).Scan(&sub.UpdatedAt)
+	).Scan(&sub.CreatedAt, &sub.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}

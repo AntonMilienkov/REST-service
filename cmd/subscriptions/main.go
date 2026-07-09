@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
+	"net/http"
+	"os"
 
 	"github.com/AntonMilienkov/REST-service/internal/config"
+	"github.com/AntonMilienkov/REST-service/internal/handler"
 	"github.com/AntonMilienkov/REST-service/internal/repository"
+	"github.com/AntonMilienkov/REST-service/internal/service"
 )
 
 func main() {
@@ -13,6 +18,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	if err := repository.Migrate(cfg.DSN(), "migrations"); err != nil {
 		log.Fatalf("run migrations: %v", err)
@@ -24,5 +31,13 @@ func main() {
 	}
 	defer pool.Close()
 
-	log.Printf("connected to db, server_port=%s", cfg.ServerPort)
+	repo := repository.NewSubscriptionRepository(pool)
+	svc := service.NewSubscriptionService(repo)
+	h := handler.NewSubscriptionHandler(svc)
+	router := handler.NewRouter(h, logger)
+
+	logger.Info("starting server", "port", cfg.ServerPort)
+	if err := http.ListenAndServe(":"+cfg.ServerPort, router); err != nil {
+		log.Fatalf("server error: %v", err)
+	}
 }
