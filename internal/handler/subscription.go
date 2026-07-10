@@ -85,6 +85,55 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sub)
 }
 
+func (h *SubscriptionHandler) TotalCost(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	periodFromStr := q.Get("period_from")
+	periodToStr := q.Get("period_to")
+	if periodFromStr == "" || periodToStr == "" {
+		writeError(w, http.StatusBadRequest, "period_from and period_to are required")
+		return
+	}
+
+	periodFrom, err := model.ParseMonthYear(periodFromStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	periodTo, err := model.ParseMonthYear(periodToStr)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	filter := service.TotalCostFilter{
+		PeriodFrom: periodFrom,
+		PeriodTo:   periodTo,
+	}
+
+	if userIDStr := q.Get("user_id"); userIDStr != "" {
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid user_id")
+			return
+		}
+		filter.UserID = &userID
+	}
+
+	if serviceName := q.Get("service_name"); serviceName != "" {
+		filter.ServiceName = &serviceName
+	}
+
+	total, err := h.svc.TotalCost(r.Context(), filter)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]int{"total": total})
+}
+
 func (h *SubscriptionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {

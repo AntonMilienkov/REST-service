@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -51,6 +52,31 @@ func (s *SubscriptionService) Update(ctx context.Context, sub *model.Subscriptio
 
 func (s *SubscriptionService) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
+}
+
+// TotalCostFilter задаёт фильтры для подсчёта суммарной стоимости подписок за период.
+type TotalCostFilter struct {
+	UserID      *uuid.UUID
+	ServiceName *string
+	PeriodFrom  time.Time
+	PeriodTo    time.Time
+}
+
+func (s *SubscriptionService) TotalCost(ctx context.Context, filter TotalCostFilter) (int, error) {
+	if filter.PeriodFrom.IsZero() || filter.PeriodTo.IsZero() {
+		return 0, fmt.Errorf("%w: period_from and period_to are required", ErrValidation)
+	}
+
+	if filter.PeriodTo.Before(filter.PeriodFrom) {
+		return 0, fmt.Errorf("%w: period_to must not be before period_from", ErrValidation)
+	}
+
+	return s.repo.SumByPeriod(ctx, repository.SumFilter{
+		UserID:      filter.UserID,
+		ServiceName: filter.ServiceName,
+		PeriodFrom:  filter.PeriodFrom,
+		PeriodTo:    filter.PeriodTo,
+	})
 }
 
 func validate(sub *model.Subscription) error {

@@ -20,6 +20,7 @@ func NewRouter(h *SubscriptionHandler, logger *slog.Logger) http.Handler {
 	r.Route("/subscriptions", func(r chi.Router) {
 		r.Post("/", h.Create)
 		r.Get("/", h.List)
+		r.Get("/total-cost", h.TotalCost)
 		r.Get("/{id}", h.Get)
 		r.Put("/{id}", h.Update)
 		r.Delete("/{id}", h.Delete)

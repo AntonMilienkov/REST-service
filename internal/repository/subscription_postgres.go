@@ -128,6 +128,31 @@ func (r *PostgresSubscriptionRepository) Delete(ctx context.Context, id uuid.UUI
 	return nil
 }
 
+func (r *PostgresSubscriptionRepository) SumByPeriod(ctx context.Context, filter SumFilter) (int, error) {
+	query := `
+		SELECT COALESCE(SUM(price), 0)
+		FROM subscriptions
+		WHERE start_date <= $1
+		  AND (end_date IS NULL OR end_date >= $2)`
+	args := []any{filter.PeriodTo, filter.PeriodFrom}
+
+	if filter.UserID != nil {
+		args = append(args, *filter.UserID)
+		query += fmt.Sprintf(" AND user_id = $%d", len(args))
+	}
+	if filter.ServiceName != nil {
+		args = append(args, *filter.ServiceName)
+		query += fmt.Sprintf(" AND service_name = $%d", len(args))
+	}
+
+	var total int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("sum subscriptions: %w", err)
+	}
+
+	return total, nil
+}
+
 func monthYearToTime(m *model.MonthYear) *time.Time {
 	if m == nil {
 		return nil

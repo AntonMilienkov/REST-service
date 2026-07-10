@@ -8,15 +8,25 @@ import (
 	"github.com/google/uuid"
 )
 
-const monthYearLayout = "01-2006"
+// MonthYearLayout — формат "MM-YYYY", используется и в JSON, и в query-параметрах периода.
+const MonthYearLayout = "01-2006"
 
 // MonthYear хранит дату в формате "MM-YYYY" (день всегда 01).
 type MonthYear struct {
 	time.Time
 }
 
+// ParseMonthYear парсит строку вида "MM-YYYY" в time.Time.
+func ParseMonthYear(s string) (time.Time, error) {
+	t, err := time.Parse(MonthYearLayout, s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid date %q, expected format MM-YYYY: %w", s, err)
+	}
+	return t, nil
+}
+
 func (m MonthYear) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + m.Format(monthYearLayout) + `"`), nil
+	return []byte(`"` + m.Format(MonthYearLayout) + `"`), nil
 }
 
 func (m *MonthYear) UnmarshalJSON(data []byte) error {
@@ -25,9 +35,9 @@ func (m *MonthYear) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	t, err := time.Parse(monthYearLayout, s)
+	t, err := ParseMonthYear(s)
 	if err != nil {
-		return fmt.Errorf("invalid date %q, expected format MM-YYYY: %w", s, err)
+		return err
 	}
 
 	m.Time = t
