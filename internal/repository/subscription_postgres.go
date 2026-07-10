@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,13 +16,14 @@ import (
 
 // PostgresSubscriptionRepository — реализация SubscriptionRepository поверх pgx.
 type PostgresSubscriptionRepository struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	logger *slog.Logger
 }
 
 var _ SubscriptionRepository = (*PostgresSubscriptionRepository)(nil)
 
-func NewSubscriptionRepository(pool *pgxpool.Pool) *PostgresSubscriptionRepository {
-	return &PostgresSubscriptionRepository{pool: pool}
+func NewSubscriptionRepository(pool *pgxpool.Pool, logger *slog.Logger) *PostgresSubscriptionRepository {
+	return &PostgresSubscriptionRepository{pool: pool, logger: logger}
 }
 
 func (r *PostgresSubscriptionRepository) Create(ctx context.Context, sub *model.Subscription) error {
@@ -34,6 +36,7 @@ func (r *PostgresSubscriptionRepository) Create(ctx context.Context, sub *model.
 		sub.ID, sub.ServiceName, sub.Price, sub.UserID, sub.StartDate.Time, monthYearToTime(sub.EndDate),
 	).Scan(&sub.CreatedAt, &sub.UpdatedAt)
 	if err != nil {
+		r.logger.Error("insert subscription failed", "error", err, "id", sub.ID)
 		return fmt.Errorf("insert subscription: %w", err)
 	}
 
@@ -56,6 +59,7 @@ func (r *PostgresSubscriptionRepository) GetByID(ctx context.Context, id uuid.UU
 		return nil, ErrNotFound
 	}
 	if err != nil {
+		r.logger.Error("get subscription failed", "error", err, "id", id)
 		return nil, fmt.Errorf("get subscription: %w", err)
 	}
 
@@ -71,6 +75,7 @@ func (r *PostgresSubscriptionRepository) List(ctx context.Context) ([]model.Subs
 
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
+		r.logger.Error("list subscriptions failed", "error", err)
 		return nil, fmt.Errorf("list subscriptions: %w", err)
 	}
 	defer rows.Close()
@@ -83,6 +88,7 @@ func (r *PostgresSubscriptionRepository) List(ctx context.Context) ([]model.Subs
 		if err := rows.Scan(
 			&sub.ID, &sub.ServiceName, &sub.Price, &sub.UserID, &sub.StartDate.Time, &endDate, &sub.CreatedAt, &sub.UpdatedAt,
 		); err != nil {
+			r.logger.Error("scan subscription failed", "error", err)
 			return nil, fmt.Errorf("scan subscription: %w", err)
 		}
 
@@ -90,6 +96,7 @@ func (r *PostgresSubscriptionRepository) List(ctx context.Context) ([]model.Subs
 		subs = append(subs, sub)
 	}
 	if err := rows.Err(); err != nil {
+		r.logger.Error("list subscriptions failed", "error", err)
 		return nil, fmt.Errorf("list subscriptions: %w", err)
 	}
 
@@ -110,6 +117,7 @@ func (r *PostgresSubscriptionRepository) Update(ctx context.Context, sub *model.
 		return ErrNotFound
 	}
 	if err != nil {
+		r.logger.Error("update subscription failed", "error", err, "id", sub.ID)
 		return fmt.Errorf("update subscription: %w", err)
 	}
 
@@ -119,6 +127,7 @@ func (r *PostgresSubscriptionRepository) Update(ctx context.Context, sub *model.
 func (r *PostgresSubscriptionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx, `DELETE FROM subscriptions WHERE id = $1`, id)
 	if err != nil {
+		r.logger.Error("delete subscription failed", "error", err, "id", id)
 		return fmt.Errorf("delete subscription: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
@@ -147,6 +156,7 @@ func (r *PostgresSubscriptionRepository) SumByPeriod(ctx context.Context, filter
 
 	var total int
 	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+		r.logger.Error("sum subscriptions failed", "error", err)
 		return 0, fmt.Errorf("sum subscriptions: %w", err)
 	}
 

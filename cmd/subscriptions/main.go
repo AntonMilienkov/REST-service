@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/AntonMilienkov/REST-service/internal/config"
 	"github.com/AntonMilienkov/REST-service/internal/handler"
@@ -19,7 +20,7 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: parseLogLevel(cfg.LogLevel)}))
 
 	if err := repository.Migrate(cfg.DSN(), "migrations"); err != nil {
 		log.Fatalf("run migrations: %v", err)
@@ -31,13 +32,26 @@ func main() {
 	}
 	defer pool.Close()
 
-	repo := repository.NewSubscriptionRepository(pool)
-	svc := service.NewSubscriptionService(repo)
+	repo := repository.NewSubscriptionRepository(pool, logger)
+	svc := service.NewSubscriptionService(repo, logger)
 	h := handler.NewSubscriptionHandler(svc)
 	router := handler.NewRouter(h, logger)
 
 	logger.Info("starting server", "port", cfg.ServerPort)
 	if err := http.ListenAndServe(":"+cfg.ServerPort, router); err != nil {
 		log.Fatalf("server error: %v", err)
+	}
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }
