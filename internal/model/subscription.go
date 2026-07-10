@@ -47,11 +47,11 @@ func (m *MonthYear) UnmarshalJSON(data []byte) error {
 // Subscription — запись о подписке пользователя на сервис.
 type Subscription struct {
 	ID          uuid.UUID  `json:"id"`
-	ServiceName string     `json:"service_name"`
-	Price       int        `json:"price"`
+	ServiceName string     `json:"service_name" example:"Yandex Plus"`
+	Price       int        `json:"price" example:"400"`
 	UserID      uuid.UUID  `json:"user_id"`
-	StartDate   MonthYear  `json:"start_date"`
-	EndDate     *MonthYear `json:"end_date,omitempty"`
+	StartDate   MonthYear  `json:"start_date" swaggertype:"string" example:"07-2025"`
+	EndDate     *MonthYear `json:"end_date,omitempty" swaggertype:"string" example:"12-2025"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }

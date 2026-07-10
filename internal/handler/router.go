@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 // NewRouter собирает роутер со всеми ручками подписок и middleware логирования/recover.
@@ -16,6 +17,8 @@ func NewRouter(h *SubscriptionHandler, logger *slog.Logger) http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(loggingMiddleware(logger))
+
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Route("/subscriptions", func(r chi.Router) {
 		r.Post("/", h.Create)

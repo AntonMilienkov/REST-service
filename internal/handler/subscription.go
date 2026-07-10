@@ -22,6 +22,25 @@ func NewSubscriptionHandler(svc *service.SubscriptionService) *SubscriptionHandl
 	return &SubscriptionHandler{svc: svc}
 }
 
+// errorResponse — тело ответа об ошибке.
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+// totalCostResponse — тело ответа ручки подсчёта суммарной стоимости.
+type totalCostResponse struct {
+	Total int `json:"total"`
+}
+
+// Create godoc
+// @Summary Создать подписку
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Param input body model.Subscription true "Данные подписки"
+// @Success 201 {object} model.Subscription
+// @Failure 400 {object} errorResponse
+// @Router /subscriptions [post]
 func (h *SubscriptionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var sub model.Subscription
 	if err := json.NewDecoder(r.Body).Decode(&sub); err != nil {
@@ -37,6 +56,15 @@ func (h *SubscriptionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, sub)
 }
 
+// Get godoc
+// @Summary Получить подписку по id
+// @Tags subscriptions
+// @Produce json
+// @Param id path string true "ID подписки"
+// @Success 200 {object} model.Subscription
+// @Failure 400 {object} errorResponse
+// @Failure 404 {object} errorResponse
+// @Router /subscriptions/{id} [get]
 func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -53,6 +81,12 @@ func (h *SubscriptionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sub)
 }
 
+// List godoc
+// @Summary Список всех подписок
+// @Tags subscriptions
+// @Produce json
+// @Success 200 {array} model.Subscription
+// @Router /subscriptions [get]
 func (h *SubscriptionHandler) List(w http.ResponseWriter, r *http.Request) {
 	subs, err := h.svc.List(r.Context())
 	if err != nil {
@@ -63,6 +97,17 @@ func (h *SubscriptionHandler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, subs)
 }
 
+// Update godoc
+// @Summary Обновить подписку
+// @Tags subscriptions
+// @Accept json
+// @Produce json
+// @Param id path string true "ID подписки"
+// @Param input body model.Subscription true "Данные подписки"
+// @Success 200 {object} model.Subscription
+// @Failure 400 {object} errorResponse
+// @Failure 404 {object} errorResponse
+// @Router /subscriptions/{id} [put]
 func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -85,6 +130,17 @@ func (h *SubscriptionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sub)
 }
 
+// TotalCost godoc
+// @Summary Суммарная стоимость подписок за период
+// @Tags subscriptions
+// @Produce json
+// @Param period_from query string true "Начало периода, формат MM-YYYY"
+// @Param period_to query string true "Конец периода, формат MM-YYYY"
+// @Param user_id query string false "Фильтр по ID пользователя"
+// @Param service_name query string false "Фильтр по названию сервиса"
+// @Success 200 {object} totalCostResponse
+// @Failure 400 {object} errorResponse
+// @Router /subscriptions/total-cost [get]
 func (h *SubscriptionHandler) TotalCost(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -131,9 +187,17 @@ func (h *SubscriptionHandler) TotalCost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]int{"total": total})
+	writeJSON(w, http.StatusOK, totalCostResponse{Total: total})
 }
 
+// Delete godoc
+// @Summary Удалить подписку
+// @Tags subscriptions
+// @Param id path string true "ID подписки"
+// @Success 204
+// @Failure 400 {object} errorResponse
+// @Failure 404 {object} errorResponse
+// @Router /subscriptions/{id} [delete]
 func (h *SubscriptionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -167,5 +231,5 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
+	writeJSON(w, status, errorResponse{Error: message})
 }

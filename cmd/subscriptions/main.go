@@ -9,11 +9,17 @@ import (
 	"strings"
 
 	"github.com/AntonMilienkov/REST-service/internal/config"
+	_ "github.com/AntonMilienkov/REST-service/docs"
 	"github.com/AntonMilienkov/REST-service/internal/handler"
 	"github.com/AntonMilienkov/REST-service/internal/repository"
 	"github.com/AntonMilienkov/REST-service/internal/service"
 )
 
+// @title Subscriptions API
+// @version 1.0
+// @description REST-сервис агрегации данных об онлайн-подписках пользователей.
+// @host localhost:8080
+// @BasePath /
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
